@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'homescreen.dart';
@@ -12,8 +13,7 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final FirebaseAuth auth = FirebaseAuth.instance;
-
-  // Controllers (simple beginner way)
+ 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
@@ -32,8 +32,18 @@ class _SignupScreenState extends State<SignupScreen> {
       await auth.createUserWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
+
+
       );
 
+        // 2️⃣ Save user info in Firestore
+  String uid = FirebaseAuth.instance.currentUser!.uid;
+  await FirebaseFirestore.instance.collection('users').doc(uid).set({
+    'name': nameController.text.trim(),
+    'email': emailController.text.trim(),
+    'createdAt': FieldValue.serverTimestamp(), // optional
+  });
+     
       // ✅ SnackBar
       ScaffoldMessenger.of(
         context,
@@ -47,7 +57,8 @@ class _SignupScreenState extends State<SignupScreen> {
         context,
         MaterialPageRoute(builder: (context) => Homescreen()),
       );
-    } catch (e) {
+    } 
+    catch (e) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.toString())));
