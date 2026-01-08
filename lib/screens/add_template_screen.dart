@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AddTemplateScreen extends StatefulWidget {
   const AddTemplateScreen({super.key});
@@ -79,21 +77,19 @@ class _AddTemplateScreenState extends State<AddTemplateScreen> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-             onPressed: () async {
-  if (_templateController.text.isEmpty) return;
-
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return;
-
-  await FirebaseFirestore.instance.collection('templates').add({
-    'userId': user.uid,
-    'text': _templateController.text.trim(),
-    'createdAt': FieldValue.serverTimestamp(),
-  });
-
-  Navigator.pop(context);
-},
-
+                onPressed: () {
+                  if (_templateController.text.isNotEmpty) {
+                    // For now, just go back to templates screen
+                    Navigator.pop(context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Please enter template text!"),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3C3C3C),
                   shape: RoundedRectangleBorder(
