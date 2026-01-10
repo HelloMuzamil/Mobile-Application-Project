@@ -41,11 +41,13 @@ class SeeAllScreen extends StatelessWidget {
               ),
             )
           : StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('birthdays')
-                  .where('userId', isEqualTo: user.uid)
-                  .orderBy('createdAt', descending: true)
-                  .snapshots(),
+                 stream: FirebaseFirestore.instance
+     .collection('users')
+    .doc(user.uid)
+    .collection('birthdays')
+    .orderBy('createdAt', descending: true)
+    .snapshots(),
+
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
@@ -114,6 +116,7 @@ class SeeAllScreen extends StatelessWidget {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: BirthdayListCard(
+                        docId: birthday.id,
                         name: name,
                         dob: dobText,
                         daysLeft: daysLeftText,
@@ -135,29 +138,58 @@ class SeeAllScreen extends StatelessWidget {
     return months[month - 1];
   }
 }
-
 class BirthdayListCard extends StatelessWidget {
+  final String docId;
   final String name, dob, daysLeft;
   final String? base64Image;
 
   const BirthdayListCard({
     super.key,
+    required this.docId,
     required this.name,
     required this.dob,
     required this.daysLeft,
     this.base64Image,
   });
 
+  void _deleteBirthday(BuildContext context) async {
+    bool confirm = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete Birthday"),
+        content: const Text("Are you sure you want to delete this birthday?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              "Delete",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await FirebaseFirestore.instance
+    .collection('users')
+    .doc(FirebaseAuth.instance.currentUser!.uid)
+    .collection('birthdays')
+    .doc(docId)
+    .delete();
+
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Convert Base64 to image
     Uint8List? imageBytes;
     if (base64Image != null && base64Image!.isNotEmpty) {
-      try {
-        imageBytes = base64Decode(base64Image!);
-      } catch (e) {
-        print("Error decoding Base64: $e");
-      }
+      imageBytes = base64Decode(base64Image!);
     }
 
     return Container(
@@ -174,41 +206,33 @@ class BirthdayListCard extends StatelessWidget {
             backgroundColor: Colors.white,
             backgroundImage: imageBytes != null ? MemoryImage(imageBytes) : null,
             child: imageBytes == null
-                ? const Icon(Icons.person, size: 30, color: Colors.black54)
+                ? const Icon(Icons.person, size: 30)
                 : null,
           ),
+
           const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                dob,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                daysLeft,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(dob),
+                Text(daysLeft),
+              ],
+            ),
+          ),
+
+          /// 🗑 DELETE ICON
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            onPressed: () => _deleteBirthday(context),
           ),
         ],
       ),
     );
   }
 }
+

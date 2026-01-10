@@ -148,13 +148,11 @@ class _HomescreenState extends State<Homescreen> {
 
          Expanded(
   child: StreamBuilder<QuerySnapshot>(
-    stream: FirebaseFirestore.instance
-        .collection('birthdays')
-        .where(
-          'userId',
-          isEqualTo: FirebaseAuth.instance.currentUser!.uid,
-        )
-        .snapshots(),
+   stream: FirebaseFirestore.instance
+    .collection('users')
+    .doc(FirebaseAuth.instance.currentUser!.uid)
+    .collection('birthdays')
+    .snapshots(),
 
     builder: (context, snapshot) {
       if (!snapshot.hasData) {
@@ -210,6 +208,7 @@ class _HomescreenState extends State<Homescreen> {
               nextBirthday.difference(now).inDays;
 
           return BirthdayCard(
+              docId: data.id,
             name: data['name'],
             days: "$daysLeft Days Left",
             imageBase64: data['imageBase64'],
@@ -270,16 +269,51 @@ class _HomescreenState extends State<Homescreen> {
   }
 }
 class BirthdayCard extends StatelessWidget {
+  final String docId;
   final String name;
   final String days;
   final String imageBase64;
 
   const BirthdayCard({
     super.key,
+    required this.docId,
     required this.name,
     required this.days,
     required this.imageBase64,
   });
+
+  void _deleteBirthday(BuildContext context) async {
+    bool confirm = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete Birthday"),
+        content: const Text("Are you sure you want to delete this birthday?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              "Delete",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+        await FirebaseFirestore.instance
+                   .collection('users')
+                     .doc(FirebaseAuth.instance.currentUser!.uid)
+                     .collection('birthdays')
+                        .doc(docId)
+                         .delete();
+
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -291,36 +325,45 @@ class BirthdayCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.black, width: 0.8),
       ),
-      child: Row(
+      child: Stack(
         children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundImage:
-                MemoryImage(base64Decode(imageBase64)),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundImage: MemoryImage(base64Decode(imageBase64)),
+              ),
+              const SizedBox(width: 10),
+
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      days,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
 
-          const SizedBox(width: 10),
-
-          /// ✅ FIX IS HERE
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  days,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+          /// 🗑 DELETE ICON
+          Positioned(
+            right: 0,
+            top: 0,
+            child: IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+              onPressed: () => _deleteBirthday(context),
             ),
           ),
         ],
@@ -328,3 +371,4 @@ class BirthdayCard extends StatelessWidget {
     );
   }
 }
+

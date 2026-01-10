@@ -322,14 +322,12 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
       );
 
       // Save to Firestore
-      String docId = "${user.uid}_${DateTime.now().millisecondsSinceEpoch}";
-      await FirebaseFirestore.instance.collection('birthdays').doc(docId).set({
-        'userId': user.uid,
-        'name': _nameController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'dob': Timestamp.fromDate(dob),
-        'imageBase64': base64Image,
-        'createdAt': FieldValue.serverTimestamp(),
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('birthdays').add({
+         'name': _nameController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          'dob': Timestamp.fromDate(dob),
+           'imageBase64': base64Image,
+           'createdAt': FieldValue.serverTimestamp(),
       });
 
       print("✅ Data saved to Firestore");
