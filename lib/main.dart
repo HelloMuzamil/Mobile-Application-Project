@@ -11,6 +11,7 @@ import 'screens/see_all_screen.dart';
 import 'screens/add_birthday_screen.dart';
 import 'screens/view_templates_screen.dart';
 import 'screens/add_template_screen.dart';
+import 'screens/profile_screen.dart'; // ✅ YEH ADD KARO
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,13 +39,11 @@ class WishMateApp extends StatelessWidget {
         "/login": (context) => LoginScreen(),
         "/signup": (context) => SignupScreen(),
         "/home": (context) => Homescreen(),
-
- 
         "/seeAll": (context) => const SeeAllScreen(),
         "/addBirthday": (context) => const AddBirthdayScreen(),
         "/viewTemplates": (context) => const ViewTemplatesScreen(),
         "/addTemplate": (context) => const AddTemplateScreen(),
-
+        "/profile": (context) => const ProfileScreen(), // ✅ YEH ADD KARO
       },
     );
   }

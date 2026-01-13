@@ -21,6 +21,10 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
   final ImagePicker _picker = ImagePicker();
   bool _isUploading = false;
 
+  // ✅ YEH NEW VARIABLES HAI - Template selection ke liye
+  String? _selectedTemplateId; // Selected template ki ID
+  String? _selectedTemplateName; // Display ke liye template ka naam
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -40,6 +44,30 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
       setState(() {
         _pickedImage = File(image.path);
       });
+    }
+  }
+
+  // ✅ YEH NEW FUNCTION HAI - Template select karne ke liye
+  Future<void> _selectTemplate() async {
+    final result = await Navigator.pushNamed(
+      context,
+      "/viewTemplates",
+      arguments: {'selectMode': true}, // ✅ Selection mode enable karne ke liye
+    );
+
+    // ✅ Agar user ne template select kiya hai
+    if (result != null && result is Map<String, dynamic>) {
+      setState(() {
+        _selectedTemplateId = result['id'];
+        _selectedTemplateName = result['name'];
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Selected: $_selectedTemplateName'),
+          backgroundColor: Colors.green,
+        ),
+      );
     }
   }
 
@@ -204,14 +232,12 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
 
                 const SizedBox(height: 32),
 
-                // Select Template Button
+                // ✅ Select Template Button (UPDATED)
                 SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, "/viewTemplates");
-                    },
+                    onPressed: _selectTemplate, // ✅ Function call
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF3C3C3C),
                       shape: RoundedRectangleBorder(
@@ -220,16 +246,16 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
+                      children: [
                         Text(
-                          "Select Template",
-                          style: TextStyle(
+                          _selectedTemplateName ?? "Select Template", // ✅ Dynamic text
+                          style: const TextStyle(
                             fontSize: 16,
                             color: Colors.white,
                           ),
                         ),
-                        SizedBox(width: 8),
-                        Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.keyboard_arrow_down, color: Colors.white),
                       ],
                     ),
                   ),
@@ -299,19 +325,14 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
     });
 
     try {
-      // Check logged-in user
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         throw "User not logged in";
       }
 
-      print("🔐 User ID: ${user.uid}");
-
       // Convert image to Base64
       final bytes = await _pickedImage!.readAsBytes();
       final base64Image = base64Encode(bytes);
-      
-      print("📊 Image size: ${bytes.length} bytes");
 
       // Convert DOB string to DateTime
       List<String> parts = _dobController.text.split('/');
@@ -321,16 +342,19 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
         int.parse(parts[0]),
       );
 
-      // Save to Firestore
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('birthdays').add({
-         'name': _nameController.text.trim(),
-          'phone': _phoneController.text.trim(),
-          'dob': Timestamp.fromDate(dob),
-           'imageBase64': base64Image,
-           'createdAt': FieldValue.serverTimestamp(),
+      // ✅ Save to Firestore WITH TEMPLATE ID
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('birthdays')
+          .add({
+        'name': _nameController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'dob': Timestamp.fromDate(dob),
+        'imageBase64': base64Image,
+        'selectedTemplateId': _selectedTemplateId, // ✅ YEH NEW FIELD HAI
+        'createdAt': FieldValue.serverTimestamp(),
       });
-
-      print("✅ Data saved to Firestore");
 
       if (!mounted) return;
 

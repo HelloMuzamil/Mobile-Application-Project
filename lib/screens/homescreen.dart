@@ -4,8 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 
-
-
 class Homescreen extends StatefulWidget {
   const Homescreen({super.key});
 
@@ -15,6 +13,26 @@ class Homescreen extends StatefulWidget {
 
 class _HomescreenState extends State<Homescreen> {
   int _currentIndex = 0;
+  User? user;
+
+  @override
+  void initState() {
+    super.initState();
+    user = FirebaseAuth.instance.currentUser;
+  }
+
+  /// Calculate days left for upcoming birthday
+  String calculateDaysLeft(Timestamp dobTimestamp) {
+    if (dobTimestamp == null) return "N/A";
+    DateTime dob = dobTimestamp.toDate();
+    DateTime now = DateTime.now();
+    DateTime nextBirthday = DateTime(now.year, dob.month, dob.day);
+    if (nextBirthday.isBefore(now)) {
+      nextBirthday = DateTime(now.year + 1, dob.month, dob.day);
+    }
+    int daysLeft = nextBirthday.difference(now).inDays;
+    return "$daysLeft Days Left";
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,12 +42,6 @@ class _HomescreenState extends State<Homescreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_none),
-          ),
-        ],
       ),
 
       body: Padding(
@@ -38,63 +50,62 @@ class _HomescreenState extends State<Homescreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            /// Header
-          Row(
-  children: [
-    const CircleAvatar(
-      radius: 20,
-      backgroundImage: AssetImage("assets/user.jpg"),
-    ),
-    const SizedBox(width: 10),
+            /// HEADER
+            Row(
+              children: [
+                const CircleAvatar(
+                  radius: 20,
+                  backgroundImage: AssetImage("assets/user.jpg"),
+                ),
+                const SizedBox(width: 10),
 
-    ///USER NAME FROM FIRESTORE (REALTIME)
-    StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(FirebaseAuth.instance.currentUser!.uid)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Text("Hi ...");
-        }
+                /// USER NAME
+                StreamBuilder<DocumentSnapshot>(
+                  stream: user == null
+                      ? null
+                      : FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(user!.uid)
+                          .snapshots(),
+                  builder: (context, snapshot) {
+                    if (user == null ||
+                        snapshot.connectionState == ConnectionState.waiting ||
+                        !snapshot.hasData ||
+                        !snapshot.data!.exists) {
+                      return const Text("Hi 👋");
+                    }
 
-        final userName = snapshot.data!['name'];
+                    final data =
+                        snapshot.data!.data() as Map<String, dynamic>;
+                    final userName = data['name'] ?? "User";
 
-        return Text(
-          "Hi $userName,\nHere are Today's Updates",
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        );
-      },
-    ),
-  ],
-),
-
+                    return Text(
+                      "Hi $userName,\nHere are Today's Updates",
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    );
+                  },
+                ),
+              ],
+            ),
 
             const SizedBox(height: 20),
 
-            /// WishMate Card
+            /// WISHMATE CARD
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Colors.black,
-                  width: 0.8,
-                ),
+                border: Border.all(color: Colors.black, width: 0.8),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
+                  const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        "WishMate App",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                    children: [
+                      Text("WishMate App",
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
                       SizedBox(height: 6),
                       Text("The birthday\nreminder"),
                     ],
@@ -105,16 +116,13 @@ class _HomescreenState extends State<Homescreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Column(
-                      children: const [
+                    child: const Column(
+                      children: [
                         Icon(Icons.cake, color: Colors.blue),
-                        Text(
-                          "WishMate",
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        Text("WishMate",
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -124,17 +132,13 @@ class _HomescreenState extends State<Homescreen> {
 
             const SizedBox(height: 25),
 
-            /// Upcoming Birthdays
+            /// UPCOMING
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  "Upcoming Birthdays",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                const Text("Upcoming Birthdays",
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 TextButton(
                   onPressed: () {
                     Navigator.pushNamed(context, "/seeAll");
@@ -146,128 +150,81 @@ class _HomescreenState extends State<Homescreen> {
 
             const SizedBox(height: 10),
 
-         Expanded(
-  child: StreamBuilder<QuerySnapshot>(
-   stream: FirebaseFirestore.instance
-    .collection('users')
-    .doc(FirebaseAuth.instance.currentUser!.uid)
-    .collection('birthdays')
-    .snapshots(),
+            /// BIRTHDAYS GRID
+            Expanded(
+              child: user == null
+                  ? const Center(child: Text("No Data"))
+                  : StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(user!.uid)
+                          .collection('birthdays')
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
 
-    builder: (context, snapshot) {
-      if (!snapshot.hasData) {
-        return const Center(child: CircularProgressIndicator());
-      }
+                        final docs = snapshot.data!.docs;
+                        if (docs.isEmpty) {
+                          return const Center(
+                              child: Text("No Birthdays 🎂"));
+                        }
 
-      final docs = snapshot.data!.docs;
-      final now = DateTime.now();
+                        return GridView.builder(
+                          itemCount: docs.length,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 1.3,
+                          ),
+                          itemBuilder: (context, index) {
+                            final data = docs[index];
 
-      // ✅ Upcoming only (next 30 days)
-      final upcoming = docs.where((doc) {
-        DateTime dob = (doc['dob'] as Timestamp).toDate();
-
-        DateTime nextBirthday =
-            DateTime(now.year, dob.month, dob.day);
-
-        if (nextBirthday.isBefore(now)) {
-          nextBirthday =
-              DateTime(now.year + 1, dob.month, dob.day);
-        }
-
-        return nextBirthday.difference(now).inDays <= 30;
-      }).toList();
-
-      if (upcoming.isEmpty) {
-        return const Center(
-          child: Text("No Upcoming Birthdays 🎂"),
-        );
-      }
-
-      return GridView.builder(
-        itemCount: upcoming.length,
-        gridDelegate:
-            const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 1.3,
-        ),
-        itemBuilder: (context, index) {
-          final data = upcoming[index];
-
-          DateTime dob =
-              (data['dob'] as Timestamp).toDate();
-
-          DateTime nextBirthday =
-              DateTime(now.year, dob.month, dob.day);
-
-          if (nextBirthday.isBefore(now)) {
-            nextBirthday =
-                DateTime(now.year + 1, dob.month, dob.day);
-          }
-
-          int daysLeft =
-              nextBirthday.difference(now).inDays;
-
-          return BirthdayCard(
-              docId: data.id,
-            name: data['name'],
-            days: "$daysLeft Days Left",
-            imageBase64: data['imageBase64'],
-          );
-        },
-      );
-    },
-  ),
-),
-
+                            return BirthdayCard(
+                              docId: data.id,
+                              name: data['name'],
+                              days: calculateDaysLeft(data['dob']),
+                              imageBase64: data['imageBase64'],
+                            );
+                          },
+                        );
+                      },
+                    ),
+            ),
           ],
         ),
       ),
 
-      /// Bottom Navigation Bar
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: const Color(0xFF8FA3D9),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.black,
-        unselectedItemColor: Colors.black54,
-        showSelectedLabels: true,
-        showUnselectedLabels: true,
-        elevation: 0,
-        currentIndex: _currentIndex,
-
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-
-          if (index == 1) {
-            Navigator.pushNamed(context, "/addBirthday");
-          } else if (index == 2) {
-            Navigator.pushNamed(context, "/viewTemplates");
-          }
-        },
-
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: "",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add),
-            label: "Add Birthday",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_box),
-            label: "View Templates",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: "",
-          ),
-        ],
+      /// BOTTOM NAV - FIXED WITH THEME
+      bottomNavigationBar: Theme(
+        data: Theme.of(context).copyWith(
+          canvasColor: const Color(0xFF8FA3D9), // Yeh background color set karega
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) {
+            setState(() => _currentIndex = index);
+            if (index == 1) {
+              Navigator.pushNamed(context, "/addBirthday");
+            } else if (index == 2) {
+              Navigator.pushNamed(context, "/viewTemplates");
+            }
+          },
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: ""),
+            BottomNavigationBarItem(icon: Icon(Icons.add), label: "Add"),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.add_box), label: "Templates"),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: ""),
+          ],
+        ),
       ),
     );
   }
 }
+
 class BirthdayCard extends StatelessWidget {
   final String docId;
   final String name;
@@ -282,39 +239,6 @@ class BirthdayCard extends StatelessWidget {
     required this.imageBase64,
   });
 
-  void _deleteBirthday(BuildContext context) async {
-    bool confirm = await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Delete Birthday"),
-        content: const Text("Are you sure you want to delete this birthday?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              "Delete",
-              style: TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-        await FirebaseFirestore.instance
-                   .collection('users')
-                     .doc(FirebaseAuth.instance.currentUser!.uid)
-                     .collection('birthdays')
-                        .doc(docId)
-                         .delete();
-
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -323,52 +247,22 @@ class BirthdayCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFCACACA),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black, width: 0.8),
+        border: Border.all(color: Colors.black),
       ),
-      child: Stack(
+      child: Column(
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundImage: MemoryImage(base64Decode(imageBase64)),
-              ),
-              const SizedBox(width: 10),
-
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      days,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          CircleAvatar(
+            radius: 20,
+            backgroundImage: MemoryImage(base64Decode(imageBase64)),
           ),
-
-          /// 🗑 DELETE ICON
-          Positioned(
-            right: 0,
-            top: 0,
-            child: IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-              onPressed: () => _deleteBirthday(context),
-            ),
-          ),
+          const SizedBox(height: 6),
+          Text(name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(days),
         ],
       ),
     );
   }
 }
-
