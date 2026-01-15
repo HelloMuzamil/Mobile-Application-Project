@@ -3,6 +3,7 @@ import 'drawer_menu.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
+import './services/notification_service.dart'; // ✅ IMPORT NOTIFICATION SERVICE
 
 class Homescreen extends StatefulWidget {
   const Homescreen({super.key});
@@ -19,6 +20,18 @@ class _HomescreenState extends State<Homescreen> {
   void initState() {
     super.initState();
     user = FirebaseAuth.instance.currentUser;
+    
+    // ✅ APP OPEN HONE PAR NOTIFICATIONS CHECK KARO
+    _checkBirthdayNotifications();
+  }
+
+  /// ✅ CHECK BIRTHDAYS AND SCHEDULE NOTIFICATIONS
+  Future<void> _checkBirthdayNotifications() async {
+    try {
+      await NotificationService.checkAndScheduleNotifications();
+    } catch (e) {
+      print("❌ Error checking notifications: $e");
+    }
   }
 
   /// Calculate days left for upcoming birthday
@@ -31,6 +44,11 @@ class _HomescreenState extends State<Homescreen> {
       nextBirthday = DateTime(now.year + 1, dob.month, dob.day);
     }
     int daysLeft = nextBirthday.difference(now).inDays;
+    
+    // ✅ SPECIAL MESSAGES FOR TODAY AND TOMORROW
+    if (daysLeft == 0) return "TODAY! 🎉";
+    if (daysLeft == 1) return "TOMORROW! 🎂";
+    
     return "$daysLeft Days Left";
   }
 
@@ -42,6 +60,24 @@ class _HomescreenState extends State<Homescreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
+        actions: [
+          // ✅ MANUAL REFRESH BUTTON - Notifications dobara check karne ke liye
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () async {
+              await _checkBirthdayNotifications();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Notifications updated ✓"),
+                    duration: Duration(seconds: 2),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            },
+          ),
+        ],
       ),
 
       body: Padding(
@@ -49,7 +85,6 @@ class _HomescreenState extends State<Homescreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             /// HEADER
             Row(
               children: [
@@ -197,10 +232,10 @@ class _HomescreenState extends State<Homescreen> {
         ),
       ),
 
-      /// BOTTOM NAV - FIXED WITH THEME
+      /// BOTTOM NAV
       bottomNavigationBar: Theme(
         data: Theme.of(context).copyWith(
-          canvasColor: const Color(0xFF8FA3D9), // Yeh background color set karega
+          canvasColor: const Color(0xFF8FA3D9),
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
@@ -241,13 +276,20 @@ class BirthdayCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ CHECK IF BIRTHDAY IS TODAY OR TOMORROW
+    final isSpecial = days.contains("TODAY") || days.contains("TOMORROW");
+    
     return Container(
       margin: const EdgeInsets.all(8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFFCACACA),
+        // ✅ SPECIAL COLOR FOR TODAY/TOMORROW
+        color: isSpecial ? const Color(0xFFFFD700) : const Color(0xFFCACACA),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black),
+        border: Border.all(
+          color: isSpecial ? Colors.orange : Colors.black,
+          width: isSpecial ? 2 : 1,
+        ),
       ),
       child: Column(
         children: [
@@ -260,7 +302,13 @@ class BirthdayCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontWeight: FontWeight.bold)),
-          Text(days),
+          Text(
+            days,
+            style: TextStyle(
+              fontWeight: isSpecial ? FontWeight.bold : FontWeight.normal,
+              color: isSpecial ? Colors.red : Colors.black,
+            ),
+          ),
         ],
       ),
     );

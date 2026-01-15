@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import './services/notification_service.dart'; // ✅ IMPORT NOTIFICATION SERVICE
 
 class AddBirthdayScreen extends StatefulWidget {
   const AddBirthdayScreen({super.key});
@@ -21,9 +22,9 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
   final ImagePicker _picker = ImagePicker();
   bool _isUploading = false;
 
-  // ✅ YEH NEW VARIABLES HAI - Template selection ke liye
-  String? _selectedTemplateId; // Selected template ki ID
-  String? _selectedTemplateName; // Display ke liye template ka naam
+  // ✅ Template selection variables
+  String? _selectedTemplateId;
+  String? _selectedTemplateName;
 
   @override
   void dispose() {
@@ -33,6 +34,7 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
     super.dispose();
   }
 
+  /// ✅ PICK IMAGE FROM GALLERY
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(
       source: ImageSource.gallery,
@@ -47,27 +49,28 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
     }
   }
 
-  // ✅ YEH NEW FUNCTION HAI - Template select karne ke liye
+  /// ✅ SELECT TEMPLATE FUNCTION
   Future<void> _selectTemplate() async {
     final result = await Navigator.pushNamed(
       context,
       "/viewTemplates",
-      arguments: {'selectMode': true}, // ✅ Selection mode enable karne ke liye
+      arguments: {'selectMode': true},
     );
 
-    // ✅ Agar user ne template select kiya hai
     if (result != null && result is Map<String, dynamic>) {
       setState(() {
         _selectedTemplateId = result['id'];
         _selectedTemplateName = result['name'];
       });
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Selected: $_selectedTemplateName'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Selected: $_selectedTemplateName'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     }
   }
 
@@ -113,7 +116,7 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
                 ),
                 const SizedBox(height: 40),
 
-                // User Image Picker
+                // ✅ USER IMAGE PICKER
                 GestureDetector(
                   onTap: _pickImage,
                   child: CircleAvatar(
@@ -132,7 +135,7 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Name Field
+                // ✅ NAME FIELD
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -160,11 +163,11 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
 
                 const SizedBox(height: 24),
 
-                // Phone Number Field
+                // ✅ PHONE NUMBER FIELD
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    "Phone Number",
+                    "Phone Number (with country code)",
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.black87,
@@ -176,7 +179,7 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
                   decoration: InputDecoration(
-                    hintText: "Enter Your Friend Phone Number",
+                    hintText: "e.g. +923001234567",
                     hintStyle: const TextStyle(color: Colors.black38),
                     filled: true,
                     fillColor: Colors.white,
@@ -189,7 +192,7 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
 
                 const SizedBox(height: 24),
 
-                // DOB Field
+                // ✅ DOB FIELD
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -232,12 +235,12 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
 
                 const SizedBox(height: 32),
 
-                // ✅ Select Template Button (UPDATED)
+                // ✅ SELECT TEMPLATE BUTTON
                 SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: _selectTemplate, // ✅ Function call
+                    onPressed: _selectTemplate,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF3C3C3C),
                       shape: RoundedRectangleBorder(
@@ -248,7 +251,7 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          _selectedTemplateName ?? "Select Template", // ✅ Dynamic text
+                          _selectedTemplateName ?? "Select Template",
                           style: const TextStyle(
                             fontSize: 16,
                             color: Colors.white,
@@ -263,7 +266,7 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
 
                 const SizedBox(height: 20),
 
-                // Add Friend Button
+                // ✅ ADD FRIEND BUTTON
                 SizedBox(
                   width: double.infinity,
                   height: 56,
@@ -290,7 +293,7 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
             ),
           ),
           
-          // Loading Overlay
+          // ✅ LOADING OVERLAY
           if (_isUploading)
             Container(
               color: Colors.black54,
@@ -305,6 +308,7 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
     );
   }
 
+  /// ✅ ADD BIRTHDAY FUNCTION WITH NOTIFICATION SETUP
   Future<void> _addBirthday() async {
     // Validation
     if (_nameController.text.isEmpty ||
@@ -330,11 +334,11 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
         throw "User not logged in";
       }
 
-      // Convert image to Base64
+      // ✅ CONVERT IMAGE TO BASE64
       final bytes = await _pickedImage!.readAsBytes();
       final base64Image = base64Encode(bytes);
 
-      // Convert DOB string to DateTime
+      // ✅ CONVERT DOB STRING TO DATETIME
       List<String> parts = _dobController.text.split('/');
       DateTime dob = DateTime(
         int.parse(parts[2]),
@@ -342,7 +346,7 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
         int.parse(parts[0]),
       );
 
-      // ✅ Save to Firestore WITH TEMPLATE ID
+      // ✅ SAVE TO FIRESTORE
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -352,15 +356,18 @@ class _AddBirthdayScreenState extends State<AddBirthdayScreen> {
         'phone': _phoneController.text.trim(),
         'dob': Timestamp.fromDate(dob),
         'imageBase64': base64Image,
-        'selectedTemplateId': _selectedTemplateId, // ✅ YEH NEW FIELD HAI
+        'selectedTemplateId': _selectedTemplateId,
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      // ✅ SCHEDULE NOTIFICATIONS FOR THIS BIRTHDAY
+      await NotificationService.checkAndScheduleNotifications();
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Birthday Added Successfully ✓"),
+          content: Text("Birthday Added & Notifications Set ✓"),
           backgroundColor: Colors.green,
         ),
       );

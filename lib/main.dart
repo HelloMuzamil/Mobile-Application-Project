@@ -11,13 +11,20 @@ import 'screens/see_all_screen.dart';
 import 'screens/add_birthday_screen.dart';
 import 'screens/view_templates_screen.dart';
 import 'screens/add_template_screen.dart';
-import 'screens/profile_screen.dart'; // ✅ YEH ADD KARO
+import 'screens/profile_screen.dart';
+import 'screens/services/notification_service.dart'; // ✅ NOTIFICATION SERVICE IMPORT
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // ✅ FIREBASE INITIALIZE
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // ✅ NOTIFICATION SERVICE INITIALIZE - YEH ZAROORI HAI
+  await NotificationService.initialize();
+  
   runApp(const WishMateApp());
 }
 
@@ -43,7 +50,7 @@ class WishMateApp extends StatelessWidget {
         "/addBirthday": (context) => const AddBirthdayScreen(),
         "/viewTemplates": (context) => const ViewTemplatesScreen(),
         "/addTemplate": (context) => const AddTemplateScreen(),
-        "/profile": (context) => const ProfileScreen(), // ✅ YEH ADD KARO
+        "/profile": (context) => const ProfileScreen(),
       },
     );
   }
